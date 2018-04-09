@@ -1,5 +1,7 @@
 package typo.ranking.server.shared;
 
+import java.util.List;
+
 public enum Move {
 
 	A1( 0 , 0 ),
@@ -366,8 +368,8 @@ public enum Move {
 	Pass( 0 , -1 ) ,
 	Resign( -1 , -1 ),
 	TimeLoss( -2 , -1 ),
-	
-	Outside( -3 , -1 );
+	Outside( -3 , -1 ),
+	Missing( -4 , -1 );
 	
 //	Accept( -4 , -1 ),
 //	Reject( -5 , -1 );
@@ -455,6 +457,27 @@ public enum Move {
 		}
 		return x + "" + (int)(1 + mY);
 		
+	}
+	
+	public static byte[] toBytes( List<Move> pMoves ) {
+		byte[] bytes=new byte[ pMoves.size() * 2 ];
+		int index=0;
+		for( Move dead : pMoves ) {
+			bytes[ index * 2 + 0 ]=(byte)dead.getX();
+			bytes[ index * 2 + 1 ]=(byte)dead.getY();
+			++index;
+		}
+		return bytes;
+	}
+	
+	public static Move[] toMoves( byte[] pBytes ) {
+		Move[] moves = new Move[pBytes.length / 2];
+		for( int i = 0 ; i < moves.length ; ++i ) {
+			byte x = pBytes[ i * 2 + 0 ];
+			byte y = pBytes[ i * 2 + 1 ];
+			moves[i] = Move.getMove( x , y );
+		}
+		return moves;
 	}
 	
 }

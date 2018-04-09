@@ -1,148 +1,112 @@
 package typo.ranking.server.server;
 
 import java.util.Collection;
-
-import com.google.appengine.api.datastore.Blob;
-import com.google.appengine.api.datastore.Entity;
-import com.google.appengine.api.datastore.Key;
-import com.google.appengine.api.datastore.KeyFactory;
+import java.util.Vector;
 
 import typo.ranking.server.shared.Move;
 
 public class Game {
 
-	private Entity mEntity;
-
+	private long mId;
+	private long mBlackId;
+	private long mWhiteId;
+	private long mPeriodTime;
+	private int mPeriodsOriginal;
+	private int mPeriodsBlack;
+	private int mPeriodsWhite;
+	private long mLastMoveDate;
+	private boolean mCompleated;
+	private Vector<Move> mMoves=new Vector<>();
+	private Vector<Move> mDead;
+	private long mCreatedDate;
+	private double mScore;
+	
+	
 	public Game( long pBlackId , long pWhiteId , long pPeriodTime , int pPeriods ) {
-		mEntity=new Entity( "Game" );
-		mEntity.setIndexedProperty( "PlayerBlack" , KeyFactory.createKey( "Player" , pBlackId ));
-		mEntity.setIndexedProperty( "PlayerWhite" , KeyFactory.createKey( "Player" , pWhiteId ));
+		mBlackId=pBlackId;
+		mWhiteId=pWhiteId;
 		long time=System.currentTimeMillis();
-		mEntity.setUnindexedProperty( "DateLastMove" , new Long( time ) );
-		
-		mEntity.setUnindexedProperty( "PeriodsBlack" , pPeriods );
-		mEntity.setUnindexedProperty( "PeriodsWhite" , pPeriods );
-		
-		mEntity.setUnindexedProperty( "PeriodsCount" , pPeriods );
-		mEntity.setUnindexedProperty( "PeriodsTime" , pPeriodTime );
-
-		mEntity.setIndexedProperty( "Compleated" , Boolean.FALSE );
+		mCreatedDate = mLastMoveDate = time;
+		mPeriodsOriginal = mPeriodsBlack = mPeriodsWhite = pPeriods;
+		mPeriodTime = pPeriodTime;
+		mCompleated = false;
+		mScore = Double.NaN;
 	}
 	
 	
-	public Game( Entity pEntity ) {
-		mEntity = pEntity;
+	public Game() {
 	}
 
-	private Move[] mMovesCache;
-	
-	public Move[] getMoves() {
-		if( mMovesCache == null ) {
-			Blob blob = (Blob) mEntity.getProperty( "Moves" );
-			if( blob != null ) {
-				byte[] bytes = blob.getBytes();
-				Move[] moves = new Move[bytes.length / 2];
-				for( int i = 0 ; i < moves.length ; ++i ) {
-					byte x = bytes[ i * 2 + 0 ];
-					byte y = bytes[ i * 2 + 1 ];
-					moves[i] = Move.getMove( x , y );
-				}
-				mMovesCache=moves;
-			} else {
-				mMovesCache=new Move[ 0 ];
-			}
-		}
-		return mMovesCache;
+	public Vector<Move> getMoves() {
+		return mMoves;
 	}
 
 	public void addMove( Move pMove ) {
-		Move[] moves = getMoves();
-		Move[] tmp;
-		tmp = new Move[moves.length + 1];
-		System.arraycopy( moves , 0 , tmp , 0 , moves.length );
-		tmp[tmp.length - 1] = pMove;
-		moves=tmp;
-		byte[] bytes=new byte[ moves.length * 2 ];
-		for( int i=0 ; i<moves.length ; ++i ) {
-			Move move=moves[ i ];
-			bytes[ i * 2 + 0 ]=(byte)move.getX();
-			bytes[ i * 2 + 1 ]=(byte)move.getY();
-		}
-		mMovesCache=moves;
-		mEntity.setUnindexedProperty( "Moves" , new Blob( bytes ) );
+		mMoves.add(pMove);
 	}
 
 	public void setDateLastMove( long pTime ) {
-		mEntity.setUnindexedProperty( "DateLastMove" , pTime );
+		mLastMoveDate=pTime;
 	}
 	
 	public long getPlayerBlack() {
-		return ((Key) mEntity.getProperty( "PlayerBlack" )).getId();
+		return mBlackId;
 	}
 
 	public long getPlayerWhite() {
-		return ((Key) mEntity.getProperty( "PlayerWhite" )).getId();
+		return mWhiteId;
 	}
 
 	public long getDateLastMove() {
-		return Storage.convertLong( mEntity.getProperty( "DateLastMove" ));
+		return mLastMoveDate;
 	}
 
 	public long getDateCreated() {
-		return Storage.convertLong( mEntity.getProperty( "DateCreated" ));
+		return mCreatedDate;
 	}
 
 	public int getPlayerPeriods( long pId ) {
 		if( pId == getPlayerBlack() ) {
-			return (int)Storage.convertLong( mEntity.getProperty( "PeriodsBlack" ));
+			return mPeriodsBlack;
 		} else if( pId == getPlayerWhite() ) {
-			return (int)Storage.convertLong( mEntity.getProperty( "PeriodsWhite" ));
+			return mPeriodsWhite;
 		} else {
 			throw new Error();
 		}
 	}
 
 	public long getPeriodTime() {
-		return Storage.convertLong( mEntity.getProperty( "PeriodsTime" ));
+		return mPeriodTime;
 	}
 
 	public long getPeriodCount() {
-		return (int)Storage.convertLong( mEntity.getProperty( "PeriodsCount" ));
+		return mPeriodsOriginal;
 	}
 
 	public long getTurn() {
-		if( getMoves().length % 2 == 0 ) {
+		if( getMoves().size() % 2 == 0 ) {
 			return getPlayerBlack();
 		} else {
 			return getPlayerWhite();
 		}
 	}
 
-	public Entity getEntity() {
-		return mEntity;
-	}
-
-
-	public long getId() {
-		return mEntity.getKey().getId();
-	}
-
 	public void setPlayerPeriods( long pId , int pPeriods ) {
 		if( pId == getPlayerBlack() ) {
-			mEntity.setUnindexedProperty( "PeriodsBlack" , pPeriods );
+			mPeriodsBlack = pPeriods;
 		} else if( pId == getPlayerWhite() ) {
-			mEntity.setUnindexedProperty( "PeriodsWhite" , pPeriods );
+			mPeriodsWhite = pPeriods;
 		} else {
 			throw new Error();
 		}
 	}
 
 	public void setScore( double pScore ) {
-		mEntity.setUnindexedProperty( "Score" , pScore );
+		mScore = pScore;
 	}
 	
 	public double getScore() {
-		return Storage.convertDouble( mEntity.getProperty( "Score" ) );
+		return mScore;
 	}
 	
 	public long getOpponent( long pId ) {
@@ -156,11 +120,10 @@ public class Game {
 	}
 
 	public long getWinner() {
-		Move lastMove=getMoves()[ getMoves().length - 1 ];
-		if( ( lastMove.equals( Move.Resign ) ) || ( lastMove.equals( Move.TimeLoss ) ) ) {
+		if( ( getLastMove().equals( Move.Resign ) ) || ( getLastMove().equals( Move.TimeLoss ) ) ) {
 			return getTurn();
 		}
-		if( mEntity.hasProperty( "Score" )) {
+		if( mScore != Double.NaN ) {
 			if( getScore() > 0 ) {
 				return getPlayerBlack();
 			} else {
@@ -171,12 +134,11 @@ public class Game {
 	}
 
 	public void setCompleted() {
-		mEntity.setIndexedProperty( "Compleated" , Boolean.TRUE );
-		mEntity.setIndexedProperty( "DateCreated" , new Long( System.currentTimeMillis() ) );
+		mCompleated=true;
 	}
 
 	public boolean isCompleted() {
-		return mEntity.hasProperty( "Compleated" ) && mEntity.getProperty( "Compleated" ).equals( Boolean.TRUE );
+		return mCompleated;
 	}
 
 	public boolean isOver() {
@@ -201,58 +163,36 @@ public class Game {
 	}
 
 	public Move getSecondLastMove() {
-		Move[] moves=getMoves();
-		if( moves.length < 2 ){
-			return null;
+		if( mMoves.size() < 2 ) {
+			return Move.Missing;
 		} else {
-			return moves[ moves.length - 2 ];
+			return mMoves.get(mMoves.size()-2);
 		}
 	}
-
 
 	public Move getLastMove() {
-		Move[] moves=getMoves();
-		if( moves.length == 0 ){
-			return null;
+		if( !mMoves.isEmpty() ) {
+			return mMoves.lastElement();
 		} else {
-			return moves[ moves.length - 1 ];
+			return Move.Missing;
 		}
 	}
 
-	public Move[] getDead() {
-		Blob blob = (Blob) mEntity.getProperty( "Deads" );
-		if( blob != null ) {
-			byte[] bytes = blob.getBytes();
-			Move[] moves = new Move[bytes.length / 2];
-			for( int i = 0 ; i < moves.length ; ++i ) {
-				byte x = bytes[ i * 2 + 0 ];
-				byte y = bytes[ i * 2 + 1 ];
-				moves[i] = Move.getMove( x , y );
-			}
-			return moves;
-		} else {
-			return new Move[ 0 ];
-		}
+	public Collection<Move> getDead() {
+		return mDead;
 	}
 
 	public void setDead( Collection<Move> pDead ) {
-		byte[] bytes=new byte[ pDead.size() * 2 ];
-		int index=0;
-		for( Move dead : pDead ) {
-			bytes[ index * 2 + 0 ]=(byte)dead.getX();
-			bytes[ index * 2 + 1 ]=(byte)dead.getY();
-			++index;
-		}
-		mEntity.setUnindexedProperty( "Deads" , new Blob( bytes ) );
+		mDead=new Vector<>(pDead);
 	}
 	
 	public boolean hasDead() {
-		return mEntity.hasProperty( "Deads" );
+		return mDead != null;
 	}
 
 
 	public int getNumberOfMoves() {
-		return getMoves().length;
+		return mMoves.size();
 	}
 
 }
